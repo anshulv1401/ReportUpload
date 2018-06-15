@@ -1,0 +1,460 @@
+'Begin Script
+
+Dim definition As [Byte]() = Nothing
+
+Dim bytedefinition as [Byte]() = nothing
+
+Dim warnings As Warning() = Nothing
+
+
+
+
+
+Public Sub Main()
+	
+	Console.WriteLine("Initiating Deployment")
+	
+	Try
+	
+'Create the shared data source
+	
+	CreateFolders(DataSourceFolder,"/","Data Sources","Visible")
+	
+'Create the folder that will contain the deployed reports
+	
+	CreateFolders(ReportFolder, "/", "Report Folder","Visible")
+	
+	
+'Create the folder that will contain the shared data sets
+	
+'CreateFolders(DataSetFolder, "/", "Data Set Folder", "Visible")
+	
+	Catch goof As Exception
+	
+	Console.WriteLine(goof.Message)
+	
+	End Try
+	
+'Reading files from folder and Publish them
+	
+	ReadFiles(filepath, "*.rds")
+	
+	Console.WriteLine("---------------------------------")
+'ReadFiles(filepath, "*.rsd")
+	
+	ReadFiles(filepath, "*.rdl")
+	
+	Console.WriteLine("---------------------------------")
+	
+	UpdateDataSources(ReportFolder, DataSourcePath,DSname)
+	
+End Sub
+
+
+
+
+'Utility for creation of folders
+
+Public Sub CreateFolders(ByVal folderName as string, ByVal parentPath as string, ByVal description as String, ByVal visible as string)
+	
+	Console.WriteLine()
+	
+	Console.WriteLine("Checking for Target Folders")
+	
+'CatalogItem properties
+	
+	Dim descriptionProp as new [Property]
+	
+	descriptionProp.Name = "Description"
+	
+	descriptionProp.Value= description
+	
+	Dim visibleProp as new [Property]
+	
+	visibleProp.Name = "Visible"
+	
+	visibleProp.value= visible
+	
+	Dim props(1) as [Property]
+	
+	props(0) = descriptionProp
+	
+	props(1) = visibleProp
+	
+	Try
+	
+	rs.CreateFolder(folderName,parentPath,props)
+	
+	Console.WriteLine("Folder {0} successfully created", foldername)
+	
+	Catch goof as SoapException
+	
+	If goof.Message.Indexof("AlreadyExists")>0 Then
+		
+		Console.WriteLine("Folder {0} already exists",foldername)
+		
+	End If
+	
+	End Try
+	
+End Sub
+
+
+'Utility for reading files from the Report Sevices Project
+
+Public sub ReadFiles(filepath as string, fileextension as string)
+	
+	Console.WriteLine()
+	
+	Console.WriteLine("Reading Files from Report Services Project, File extension ::" + fileextension)
+	
+	Dim rptdirinfo As System.IO.DirectoryInfo
+	
+	rptdirinfo = New System.IO.DirectoryInfo(filepath)
+	
+	Dim filedoc As FileInfo()
+	
+	filedoc = rptdirinfo.GetFiles(fileextension)
+	
+	Try
+	
+	For rptcount As Integer = 0 To filedoc.Length-1
+		
+		If Not filedoc(rptcount).Name.ToString.Trim.ToUpper.Contains("BACKUP") Then
+			
+			SELECT Case fileextension
+				
+			Case "*.rds"
+				
+				CreateDataSource(filedoc(rptcount).tostring.trim)
+				
+'Case "*.rsd"
+				
+'CreateDataSet(filedoc(rptcount).tostring.trim)
+				
+			Case "*.rdl"
+				
+				PublishReport(filedoc(rptcount).tostring.trim)
+				
+			End Select
+			
+		End If
+		
+	Next
+	
+	Catch goof as Exception
+	
+	Console.WriteLine("In ReadFiles " + goof.message)
+	
+	End Try
+	
+End Sub
+
+
+
+
+
+
+'Utility to Publish the Reports
+
+Public Sub PublishReport(ByVal reportName As String)
+	
+	Try
+	
+	Dim stream As FileStream = File.OpenRead(filePath + "\" + reportName )
+	
+	definition = New [Byte](stream.Length-1) {}
+	
+	stream.Read(definition, 0, CInt(stream.Length))
+	
+	stream.Close()
+	
+	Catch e As IOException
+	
+	Console.WriteLine(e.Message)
+	
+	End Try
+	
+	reportname=reportname.tostring.replace(".rdl","")
+	Console.WriteLine()
+	Console.WriteLine("Attempting to Deploy Report Name {0}", reportname.tostring)
+	
+	Try
+	
+	Dim item as CatalogItem
+	
+	item=rs.CreateCatalogItem("Report",reportname, "/" + ReportFolder, false, definition,nothing, warnings)
+	
+'warnings = rs.CreateCatalogItem(reportName, "/" + ReportFolder, False, definition, Nothing)
+	
+	If Not (warnings Is Nothing) Then
+		
+		Dim warning As Warning
+		
+		Console.WriteLine("Report Published With warnings")
+		
+		For Each warning In warnings
+			
+			Console.WriteLine(warning.Message)
+			
+			Next warning
+			
+		Else
+			
+			Console.WriteLine("Report: {0} published successfully with no warnings", reportName)
+			
+		End If
+		
+		Catch goof as SoapException
+		
+		If goof.Message.Indexof("AlreadyExists")>0 Then
+			
+			Console.WriteLine("The Report Name {0} already exists",reportName.ToString)
+			
+		Else
+			
+			If goof.Message.IndexOf("published")=-1 Then
+				
+				Console.WriteLine("Report Published With Errors")
+				Console.WriteLine(goof.Message)
+				
+			End If
+			
+		End If
+		
+		End Try
+		
+	End Sub
+	
+	
+	
+	
+'Utility for creating Data Sources on the Server
+	
+	Public Sub CreateDataSource(filename as string)
+		
+'Define the data source definition.
+		
+		Dim dsDefinition As New DataSourceDefinition()
+		
+		Dim DataSourceName as string
+		
+		DataSourceName =  Path.GetFileNameWithoutExtension(fileName)
+		
+		Dim valstart As Integer
+		
+		Dim valend As Integer
+		
+		Dim ConnectionString As String
+		
+		Dim Extension As String
+		
+		Dim IntegratedSec As String
+		
+		Dim DataSourceID As String
+		
+		Dim PromptStr As String
+		
+		PromptStr=""
+		
+		Dim DSDefinitionStr As String
+		
+		DSDefinitionStr = ""
+		
+		Console.WriteLine()
+		Console.WriteLine("Attempting to Deploy Data Source {0}", filename)
+		
+		Try
+		
+		Dim stream As FileStream = File.OpenRead(filepath + "\" + filename)
+		
+		bytedefinition = New [Byte](stream.Length) {}
+		
+		stream.Read(bytedefinition, 0, CInt(stream.Length))
+		
+		stream.Close()
+		
+		For i As Integer = 0 To bytedefinition.Length - 1
+			
+			DSDefinitionStr = DSDefinitionStr + Convert.ToString(Convert.ToChar(Convert.ToInt16(bytedefinition(i).ToString)))
+			
+		Next
+		
+		Catch goof As IOException
+		
+		Console.WriteLine(goof.Message)
+		
+		End Try
+		
+		If DSDefinitionStr.ToString.Contains("<ConnectString>") And DSDefinitionStr.ToString.Contains("</ConnectString>") Then
+			
+			valstart = DSDefinitionStr.ToString.IndexOf("<ConnectString>") + 15
+			
+			valend = DSDefinitionStr.ToString.IndexOf("</ConnectString>")
+			
+			ConnectionString = DSDefinitionStr.ToString.Substring(valstart, valend - valstart)
+			
+		End If
+		
+		If DSDefinitionStr.ToString.Contains("<Extension>") And DSDefinitionStr.ToString.Contains("</Extension>") Then
+			
+			valstart = DSDefinitionStr.ToString.IndexOf("<Extension>") + 11
+			
+			valend = DSDefinitionStr.ToString.IndexOf("</Extension>")
+			
+			Extension = DSDefinitionStr.ToString.Substring(valstart, valend - valstart)
+			
+		End If
+		
+		If DSDefinitionStr.ToString.Contains("<IntegratedSecurity>") And DSDefinitionStr.ToString.Contains("</IntegratedSecurity>") Then
+			
+			valstart = DSDefinitionStr.ToString.IndexOf("<IntegratedSecurity>") + 20
+			
+			valend = DSDefinitionStr.ToString.IndexOf("</IntegratedSecurity>")
+			
+			IntegratedSec = DSDefinitionStr.ToString.Substring(valstart, valend - valstart)
+			
+		End If
+		
+		If DSDefinitionStr.ToString.Contains("<DataSourceID>") And DSDefinitionStr.ToString.Contains("</DataSourceID>") Then
+			
+			valstart = DSDefinitionStr.ToString.IndexOf("<DataSourceID>") + 14
+			
+			valend = DSDefinitionStr.ToString.IndexOf("</DataSourceID>")
+			
+			DataSourceID = DSDefinitionStr.ToString.Substring(valstart, valend - valstart)
+			
+		End If
+		
+		If DSDefinitionStr.ToString.Contains("<Prompt>") And DSDefinitionStr.ToString.Contains("</Prompt>") Then
+			
+			valstart = DSDefinitionStr.ToString.IndexOf("<Prompt>") + 8
+			
+			valend = DSDefinitionStr.ToString.IndexOf("</Prompt>")
+			
+			PromptStr = DSDefinitionStr.ToString.Substring(valstart, valend - valstart)
+			
+		End If
+		
+		dsdefinition.CredentialRetrieval = CredentialRetrievalEnum.Integrated
+		
+		dsdefinition.ConnectString = ConnectionString
+		
+		dsdefinition.Enabled = True
+		
+		dsdefinition.EnabledSpecified = True
+		
+		dsdefinition.Extension = extension
+		
+		dsdefinition.ImpersonateUser = False
+		
+		dsdefinition.ImpersonateUserSpecified = True
+		
+'Use the default prompt string.
+		
+		If PromptStr.ToString.Length=0 Then
+			
+			dsdefinition.Prompt = Nothing
+			
+		Else
+			
+			dsdefinition.Prompt = PromptStr
+			
+		End if
+		
+		dsdefinition.WindowsCredentials = False
+		
+		Try
+		
+		rs.CreateDataSource(DataSourceName, "/" + DataSourceFolder, False, dsdefinition, Nothing)
+		
+		Console.WriteLine("Data source {0} created successfully", DataSourceName.ToString)
+		
+		Catch goof as SoapException
+		
+		If goof.Message.Indexof("AlreadyExists")>0 Then
+			
+			Console.WriteLine("The Data Source name {0} already exists",DataSourceName.ToString)
+
+		Else
+		
+			Console.WriteLine(goof.Message)
+		
+		End If
+		
+		End Try
+		
+	End Sub
+	
+	
+'Utility to Update The Data Sources on the Server
+	
+	Public Sub UpdateDataSources(ReportFolder as string, DataSourcePath as string,DSname as string)
+		
+		Dim item as CatalogItem
+		
+		Dim items as CatalogItem()
+		
+		Try
+		
+		
+		items=rs.ListChildren("/" + ReportFolder, False)
+		
+		
+		For Each item in items
+			
+			Dim dataSources() as DataSource = rs.GetItemDataSources(item.Path)
+			
+			For Each ds as DataSource in dataSources
+				
+				
+				Dim sharedDs(0) as DataSource
+				
+				sharedDs(0)=GetDataSource(DataSourcePath,ds.Name,DSname)
+				
+				
+				rs.SetItemDataSources(item.Path, sharedDs)
+				
+				Console.WriteLine("Successfully updated " & DSname & " datasource for " & item.Path & " report")
+				
+			Next
+			
+		Next
+		
+		Console.WriteLine()
+		Console.WriteLine("------------------------------------------------")
+		Console.WriteLine("Shared data source reference set for reports in the {0} folder.", ReportFolder)
+		
+		Catch goof As SoapException
+		
+		Console.WriteLine(goof.Detail.InnerXml.ToString())
+		
+		End Try
+		
+	End Sub
+	
+	
+	
+'Function to Reference Data Sources
+	
+	Private Function GetDataSource(sharedDataSourcePath as string, dataSourceName as String, DSname as String) as DataSource
+		
+		Dim reference As New DataSourceReference()
+		
+		Dim ds As New DataSource
+		
+		reference.Reference = sharedDataSourcePath & "/" & DSname
+		
+		ds.Item = CType(reference, DataSourceDefinitionOrReference)
+		
+		ds.Name = dataSourceName
+		Console.WriteLine()
+		Console.WriteLine("Attempting to Publish Data Source {0}",DSname)
+		
+		GetDataSource=ds
+		
+	End Function
+	
+	
+	
+	

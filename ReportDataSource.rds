@@ -1,0 +1,11 @@
+- <DataSourceDefinition>
+  <Extension>SQL</Extension> 
+  <ConnectString>Server=SERVERNAME; Database=DBNAME; uid=USERNAME; pwd=PASSWORD; Connect Timeout=60;Connection Lifetime=45;Max Pool Size=10000</ConnectString> 
+  <UseOriginalConnectString>False</UseOriginalConnectString> 
+  <OriginalConnectStringExpressionBased>False</OriginalConnectStringExpressionBased> 
+  <CredentialRetrieval>Store</CredentialRetrieval> 
+  <WindowsCredentials>False</WindowsCredentials> 
+  <ImpersonateUser>False</ImpersonateUser> 
+  <UserName>USERNAME</UserName> 
+  <Enabled>True</Enabled> 
+  </DataSourceDefinition>
